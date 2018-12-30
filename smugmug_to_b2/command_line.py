@@ -2,37 +2,20 @@
 # File: command_line
 #
 
+import argparse
+import json
 import os
 import sys
 import yaml
 
-
-class AppError(Exception):
-    def __init__(self, message):
-        super(AppError, self).__init__(message)
+from .exception import AppError, ConfigReadError
+from .smugmug import get_auth_url, set_pin, SmugMug
 
 
-CONFIG_HELP = """
+def pj(x):
+    print(json.dumps(x, indent=4, sort_keys=True))
 
-For both Smugmug and B2, the credentials are a key and a secret.
-In B2, the key is called an "application key ID" or "account ID", and the
-secret is call an "application key".
 
-The credentials for both should be in ~/.smugmug-to-b2, which is YAML and
-should look like this:
-
-config:
-  smugmug:
-    key: ...
-    secret: ...
-  b2:
-    key: ...
-    secret: ...
-     
-"""
-class ConfigReadError(AppError):
-    def __str__(self):
-        return super(ConfigReadError, self).__str__() + CONFIG_HELP
 
 
 def get_config():
@@ -57,10 +40,55 @@ def get_config():
     return config
 
 
+def authorize_command(config, args):
+    print(config)
+    smug_mug_config = config['smugmug']
+    url = get_auth_url(smug_mug_config['key'], smug_mug_config['secret'])
+    print()
+    print('Go to this URL, and get a PIN for accessing SmugMug:')
+    print()
+    print('   ', url)
+    print()
+    print('When you are done, run this command:')
+    print()
+    print('     smugmug-to-b2 set-pin <pin>')
+    print()
+
+
+def set_pin_command(config, args):
+    smug_mug_config = config['smugmug']
+    set_pin(smug_mug_config['key'], smug_mug_config['secret'], args.pin)
+    print('PIN successfully stored.')
+
+
+def stats_command(config, args):
+    smug_mug = SmugMug()
+    pj(smug_mug.get_user())
+
+
 def main():
     try:
-        print(get_config())
+        config = get_config()
     except AppError as app_error:
         print()
         print(str(app_error), file=sys.stderr)
+        return
+
+    parser = argparse.ArgumentParser(
+        description='Tool to back up photos from SmugMug to B2',
+    )
+    subparsers = parser.add_subparsers(title='sub-commands', help='sub-command help')
+
+    authorize_subparser = subparsers.add_parser('authorize')
+    authorize_subparser.set_defaults(func=authorize_command)
+
+    set_pin_subparser = subparsers.add_parser('set-pin')
+    set_pin_subparser.add_argument('pin')
+    set_pin_subparser.set_defaults(func=set_pin_command)
+
+    stats_subparser = subparsers.add_parser('stats')
+    stats_subparser.set_defaults(func=stats_command)
+
+    args = parser.parse_args()
+    args.func(config['config'], args)
 
