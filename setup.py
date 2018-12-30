@@ -13,6 +13,7 @@ setup(
     include_package_data=False,
     install_requires=[
         'b2',
+        'PyYAML',
         'requests',
     ],
     entry_points = {
