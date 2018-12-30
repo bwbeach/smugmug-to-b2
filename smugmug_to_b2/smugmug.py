@@ -4,7 +4,7 @@
 
 import json
 import os
-import requests
+import urllib
 
 from rauth import OAuth1Service, OAuth1Session
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
@@ -20,6 +20,10 @@ API_ORIGIN = 'https://api.smugmug.com'
 
 # PIN path
 PIN_PATH = os.path.join(os.getenv('HOME'), '.smugmug-to-b2-access-token')
+
+
+def pj(x):
+    print(json.dumps(x, indent=4, sort_keys=True))
 
 
 def _read_json(path):
@@ -101,9 +105,35 @@ def set_pin(key, secret, pin):
 def _get_json(session, path):
     response = session.get(API_ORIGIN + path, headers={'Accept': 'application/json'})
     if response.status_code != 200:
+        if response.status_code == 401:
+            message = json.loads(response.text)['Message']
+            print(urllib.parse.unquote(message))
         raise HttpError('status %d: %s' % (response.status_code, response.text,))
     else:
         return response.json()['Response']
+
+
+def _get_paged_json(session, path):
+    result = None
+    next_path = path + '?count=5'
+    while next_path is not None:
+        print('AAA', next_path)
+        one_batch = _get_json(session, next_path)
+        print(sorted(one_batch.keys()))
+        if result is None:
+            result = one_batch
+        else:
+            list_field = result['Locator']
+            result[list_field].append(one_batch.list_field)
+        if 'Pages' not in one_batch:
+            break
+        pages = one_batch['Pages']
+        next_path = pages.get('NextPage')
+        pj(pages)
+        print(next_path)
+    if 'Pages' in result:
+        del result['Pages']
+    return result
 
 
 class BaseObject:
@@ -119,7 +149,7 @@ class BaseObject:
         return self.make_object(self.session, object_type, object_data)
 
     def _get_object_list(self, path):
-        data = _get_json(self.session, path)
+        data = _get_paged_json(self.session, path)
         assert data['LocatorType'] == 'Objects'
         object_type = data['Locator']
         return list(

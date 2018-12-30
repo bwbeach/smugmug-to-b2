@@ -16,8 +16,6 @@ def pj(x):
     print(json.dumps(x, indent=4, sort_keys=True))
 
 
-
-
 def get_config():
     """
     Returns a dictionary:
