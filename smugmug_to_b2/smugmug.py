@@ -9,7 +9,7 @@ import requests
 from rauth import OAuth1Service, OAuth1Session
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
-from .exception import CredentialsError, HttpError
+from .exception import AppError, CredentialsError, HttpError
 
 # From https://api.smugmug.com/api/v2/doc/tutorial/oauth/non-web.html:
 OAUTH_ORIGIN = 'https://secure.smugmug.com'
@@ -98,29 +98,65 @@ def set_pin(key, secret, pin):
     _write_json(PIN_PATH, dict(key=key, secret=secret, access_token=at, access_token_secret=ats))
 
 
-class SmugMug:
-    """
-    API access to SmugMug.  Assumes that we have an access token in PIN_PATH.
-    """
-    def __init__(self):
-        info = _read_json(PIN_PATH)
-        self.key = info['key']
-        self.secret = info['secret']
-        self.access_token = info['access_token']
-        self.access_token_secret = info['access_token_secret']
-        self.session = OAuth1Session(
-            self.key,
-            self.secret,
-            access_token=self.access_token,
-            access_token_secret=self.access_token_secret)
-        self.auth_user = self._get_json('/api/v2!authuser')['Response']['User']
+def _get_json(session, path):
+    response = session.get(API_ORIGIN + path, headers={'Accept': 'application/json'})
+    if response.status_code != 200:
+        raise HttpError('status %d: %s' % (response.status_code, response.text,))
+    else:
+        return response.json()['Response']
 
-    def get_user(self):
-        return self._get_json(self.auth_user['Uri'])
 
-    def _get_json(self, path):
-        response = self.session.get(
-            API_ORIGIN + path,
-            headers={'Accept': 'application/json'}
+class BaseObject:
+    def __init__(self, session, data):
+        self.session = session
+        self.data = data
+
+    def _get_object(self, path):
+        data = _get_json(self.session, path)
+        assert data['LocatorType'] == 'Object'
+        object_type = data['Locator']
+        object_data = data[object_type]
+        return self.make_object(self.session, object_type, object_data)
+
+    def _get_object_list(self, path):
+        data = _get_json(self.session, path)
+        assert data['LocatorType'] == 'Objects'
+        object_type = data['Locator']
+        return list(
+            self.make_object(self.session, object_type, object_data)
+            for object_data in data[object_type]
         )
-        return response.json()
+
+    def __str__(self):
+        return self.data['Uri']
+
+    @classmethod
+    def make_object(self, session, object_type, object_data):
+        if object_type == 'Node':
+            return Node(session, object_data)
+        elif object_type == 'User':
+            return User(session, object_data)
+        else:
+            raise AppError('unknown object type: ' + object_type)
+
+
+class User(BaseObject):
+    @property
+    def node(self):
+        return self._get_object(self.data['Uris']['Node']['Uri'])
+
+
+class Node(BaseObject):
+    @property
+    def children(self):
+        return self._get_object_list(self.data['Uris']['ChildNodes']['Uri'])
+
+
+def get_auth_user():
+    info = _read_json(PIN_PATH)
+    key = info['key']
+    secret = info['secret']
+    access_token = info['access_token']
+    access_token_secret = info['access_token_secret']
+    session = OAuth1Session(key, secret, access_token=access_token, access_token_secret=access_token_secret)
+    return BaseObject.make_object(session, 'User', _get_json(session, '/api/v2!authuser')['User'])

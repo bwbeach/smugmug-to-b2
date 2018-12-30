@@ -9,7 +9,7 @@ import sys
 import yaml
 
 from .exception import AppError, ConfigReadError
-from .smugmug import get_auth_url, set_pin, SmugMug
+from .smugmug import get_auth_url, set_pin, get_auth_user
 
 
 def pj(x):
@@ -62,8 +62,11 @@ def set_pin_command(config, args):
 
 
 def stats_command(config, args):
-    smug_mug = SmugMug()
-    pj(smug_mug.get_user())
+    user = get_auth_user()
+    node = user.node
+    children = node.children
+    for child in children:
+        print(child)
 
 
 def main():
