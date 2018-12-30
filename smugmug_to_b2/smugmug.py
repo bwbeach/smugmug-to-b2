@@ -4,6 +4,8 @@
 
 import json
 import os
+import requests
+import requests_oauthlib
 import urllib
 
 from rauth import OAuth1Service, OAuth1Session
@@ -115,22 +117,18 @@ def _get_json(session, path):
 
 def _get_paged_json(session, path):
     result = None
-    next_path = path + '?count=5'
+    next_path = path + '?count=20'
     while next_path is not None:
-        print('AAA', next_path)
         one_batch = _get_json(session, next_path)
-        print(sorted(one_batch.keys()))
         if result is None:
             result = one_batch
         else:
             list_field = result['Locator']
-            result[list_field].append(one_batch.list_field)
+            result[list_field].extend(one_batch[list_field])
         if 'Pages' not in one_batch:
             break
         pages = one_batch['Pages']
         next_path = pages.get('NextPage')
-        pj(pages)
-        print(next_path)
     if 'Pages' in result:
         del result['Pages']
     return result
@@ -188,5 +186,5 @@ def get_auth_user():
     secret = info['secret']
     access_token = info['access_token']
     access_token_secret = info['access_token_secret']
-    session = OAuth1Session(key, secret, access_token=access_token, access_token_secret=access_token_secret)
+    session = requests_oauthlib.OAuth1Session(client_key=key, client_secret=secret, resource_owner_key=access_token, resource_owner_secret=access_token_secret)
     return BaseObject.make_object(session, 'User', _get_json(session, '/api/v2!authuser')['User'])
