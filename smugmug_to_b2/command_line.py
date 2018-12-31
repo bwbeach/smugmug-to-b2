@@ -8,7 +8,7 @@ import os
 import sys
 import yaml
 
-from .backup import all_b2_images, all_smugmug_images
+from .backup import all_b2_images, all_smugmug_images, backup
 from .exception import AppError, ConfigReadError
 from .smugmug import get_auth_url, set_pin, get_auth_user
 
@@ -65,36 +65,6 @@ def set_pin_command(config, args):
 
 
 
-def walk_nodes(root, depth=0):
-    """
-    Walks all images in the account, returning (image_count, total_bytes)
-    """
-    name = root.name or 'NO_NAME'
-    prefix = '    ' * depth
-    has_children = root.has_children
-    has_album = root.has_album
-    assert not (has_children and has_album)
-    image_count = 0
-    total_bytes = 0
-    if has_children:
-        print('%s%s' % (prefix, name,))
-        for child in root.children:
-            c, b = walk_nodes(child, depth + 1)
-            image_count += c
-            total_bytes += b
-    if has_album:
-        images = root.album.images
-        image_count = len(images)
-        total_bytes = sum(i.byte_count for i in images)
-        print('%s%30s%5d   %8dMB' % (
-            prefix,
-            name,
-            image_count,
-            (total_bytes + 500000) // 1000000
-        ))
-    return image_count, total_bytes
-
-
 def list_smug_mug(config, args):
     user = get_auth_user()
     for i in all_smugmug_images(user.node):
@@ -112,6 +82,13 @@ def list_b2(config, args):
     bucket = get_bucket(config)
     for i in all_b2_images(bucket):
         print(i)
+
+
+def backup_command(config, args):
+    node = get_auth_user().node
+    bucket = get_bucket(config)
+    backup(node, bucket)
+
 
 def main():
     try:
@@ -138,6 +115,9 @@ def main():
 
     list_smug_mug_subparser = subparsers.add_parser('list-smug-mug')
     list_smug_mug_subparser.set_defaults(func=list_smug_mug)
+
+    backup_subparser = subparsers.add_parser('backup')
+    backup_subparser.set_defaults(func=backup_command)
 
     args = parser.parse_args()
     args.func(config['config'], args)

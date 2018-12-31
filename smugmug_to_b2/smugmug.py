@@ -4,6 +4,7 @@
 
 import json
 import os
+import requests
 import requests_oauthlib
 import urllib
 
@@ -212,6 +213,22 @@ class Album(BaseObject):
 
 
 class AlbumImage(BaseObject):
+
+    @property
+    def archived_bytes(self):
+        print(self.archived_uri)
+        response = requests.get(self.archived_uri)  # self.session.get...
+        if response.status_code != 200:
+            raise HttpError('status = %d %s' % (response.status_code, response.text,))
+        print(response)
+        response.raw.decode_content = True  # force undo transport encoding (like gzip)
+        bytes = response.content
+        with open('/tmp/image.jpg', 'wb') as f:
+            f.write(bytes)
+        print(len(bytes), self.byte_count)
+        assert len(bytes) == self.byte_count
+        return bytes
+
     @property
     def archived_md5(self):
         return self._get_required('ArchivedMD5')
