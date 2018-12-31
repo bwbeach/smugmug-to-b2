@@ -8,6 +8,8 @@ Syncs the contents of SmugMug to a B2 bucket.
 
 import hashlib
 
+from .util import ordered_zip
+
 
 def hash_metadata(caption, date, file_name, keywords, title):
     string_to_hash = '|'.join([caption, date, file_name, keywords, title])
@@ -29,10 +31,10 @@ class SmugMugImage:
         self.b2_path = parent_prefix + '.'.join(parts[:-1]) + '.' + meta_hash + '.' + parts[-1]
 
     def __repr__(self):
-        return self.b2_path
+        return 'SM:' + self.b2_path
 
     def __str__(self):
-        return self.b2_path
+        return repr(self)
 
     @property
     def archived_bytes(self):
@@ -61,7 +63,7 @@ def all_smugmug_images(node, is_root=True, parent_prefix=''):
 
     # Yield all of the images in all children
     if has_children:
-        children = sorted(node.children, key=(lambda c: c.name))
+        children = sorted(node.children, key=(lambda c: c.name + '/'))
         for child in children:
             for image in all_smugmug_images(child, False, my_prefix):
                 yield image
@@ -81,10 +83,10 @@ class B2Image:
         self.b2_path = b2_path
 
     def __repr__(self):
-        return self.b2_path
+        return 'B2:' + self.b2_path
 
     def __str__(self):
-        return self.b2_path
+        return repr(self)
 
 
 def all_b2_images(b2_bucket):
@@ -92,43 +94,8 @@ def all_b2_images(b2_bucket):
         yield B2Image(file_version_info.file_name)
 
 
-class Reader:
-    def __init__(self, source):
-        self.source = source
-        self.advance()
-
-    def advance(self):
-        try:
-            self.current = next(self.source)
-        except StopIteration:
-            self.current = None
-
-def zip_files(source_a, source_b):
-    reader_a = Reader(source_a)
-    reader_b = Reader(source_b)
-    while reader_a.current is not None or reader_b.current is not None:
-        if reader_a.current is None:
-            yield None, reader_b.current
-            reader_b.advance()
-        elif reader_b.current is None:
-            yield reader_a.current, None
-            reader_a.advance()
-        else:
-            a = reader_a.current.b2_path
-            b = reader_b.current.b2_path
-            if a < b:
-                yield reader_a.current, None
-                reader_a.advance()
-            elif a == b:
-                yield reader_a.current, reader_b.current
-                reader_a.advance()
-                reader_b.advance()
-            else:
-                yield None, reader_b.current
-                reader_b.advance()
-
 def backup(top_node, bucket):
-    for a, b in zip_files(all_smugmug_images(top_node), all_b2_images(bucket)):
+    for a, b in ordered_zip(all_smugmug_images(top_node), all_b2_images(bucket), key=lambda x: x.b2_path):
         if a is None:
             print('HIDE    ', b.b2_path)
             bucket.hide_file(b.b2_path)
