@@ -148,4 +148,3 @@ def backup(top_node, bucket):
                 file_name=a.b2_path,
                 file_infos=file_infos
             )
-            break
