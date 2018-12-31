@@ -8,6 +8,7 @@ import os
 import sys
 import yaml
 
+from .backup import all_smugmug_images
 from .exception import AppError, ConfigReadError
 from .smugmug import get_auth_url, set_pin, get_auth_user
 
@@ -92,11 +93,8 @@ def walk_nodes(root, depth=0):
 
 def stats_command(config, args):
     user = get_auth_user()
-    node = user.node
-    image_count, total_bytes = walk_nodes(node)
-    print()
-    print('number of images:', image_count)
-    print('total MB:', total_bytes // 10000000)
+    for i in all_smugmug_images(user.node):
+        print(i)
 
 
 def main():

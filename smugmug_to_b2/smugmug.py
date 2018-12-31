@@ -144,7 +144,6 @@ class BaseObject:
         if uri_name not in uris:
             pj(self.data)
         path = uris[uri_name]['Uri']
-        print(uri_name, path)
         data = _get_paged_json(self.session, path)
         object_type = data['Locator']
         if data['LocatorType'] == 'Object':
@@ -215,8 +214,36 @@ class Album(BaseObject):
 
 class AlbumImage(BaseObject):
     @property
+    def archived_md5(self):
+        return self._get_required('ArchivedMD5')
+
+    @property
+    def archived_uri(self):
+        return self._get_required('ArchivedUri')
+
+    @property
     def byte_count(self):
         return self._get_required('ArchivedSize')
+
+    @property
+    def caption(self):
+        return self._get_required('Caption')
+
+    @property
+    def date(self):
+        return self._get_required('Date')
+
+    @property
+    def file_name(self):
+        return self._get_required('FileName')
+
+    @property
+    def keywords(self):
+        return self._get_required('Keywords')
+
+    @property
+    def title(self):
+        return self._get_required('Title')
 
 
 def get_auth_user():
