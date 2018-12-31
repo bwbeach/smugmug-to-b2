@@ -139,45 +139,84 @@ class BaseObject:
         self.session = session
         self.data = data
 
-    def _get_object(self, path):
-        data = _get_json(self.session, path)
-        assert data['LocatorType'] == 'Object'
-        object_type = data['Locator']
-        object_data = data[object_type]
-        return self.make_object(self.session, object_type, object_data)
-
-    def _get_object_list(self, path):
+    def _get_from_my_uri(self, uri_name):
+        uris = self.data['Uris']
+        if uri_name not in uris:
+            pj(self.data)
+        path = uris[uri_name]['Uri']
+        print(uri_name, path)
         data = _get_paged_json(self.session, path)
-        assert data['LocatorType'] == 'Objects'
         object_type = data['Locator']
-        return list(
-            self.make_object(self.session, object_type, object_data)
-            for object_data in data[object_type]
-        )
+        if data['LocatorType'] == 'Object':
+            return self.make_object(self.session, object_type, data[object_type])
+        elif data['LocatorType'] == 'Objects':
+            return list(
+                self.make_object(self.session, object_type, object_data)
+                for object_data in data.get(object_type, [])
+            )
 
     def __str__(self):
         return self.data['Uri']
 
     @classmethod
     def make_object(self, session, object_type, object_data):
-        if object_type == 'Node':
+        if object_type == 'Album':
+            return Album(session, object_data)
+        elif object_type == 'AlbumImage':
+            return AlbumImage(session, object_data)
+        elif object_type == 'Node':
             return Node(session, object_data)
         elif object_type == 'User':
             return User(session, object_data)
         else:
             raise AppError('unknown object type: ' + object_type)
 
+    def _get_required(self, field):
+        if field not in self.data:
+            pj(self.data)
+        return self.data[field]
+
 
 class User(BaseObject):
     @property
     def node(self):
-        return self._get_object(self.data['Uris']['Node']['Uri'])
+        return self._get_from_my_uri('Node')
 
 
 class Node(BaseObject):
     @property
     def children(self):
-        return self._get_object_list(self.data['Uris']['ChildNodes']['Uri'])
+        assert self.has_children
+        assert not self.has_album
+        return self._get_from_my_uri('ChildNodes')
+
+    @property
+    def has_children(self):
+        return self.data['HasChildren']
+
+    @property
+    def name(self):
+        return self.data['Name']
+
+    @property
+    def has_album(self):
+        return 'Album' in self.data['Uris']
+
+    @property
+    def album(self):
+        return self._get_from_my_uri('Album')
+
+
+class Album(BaseObject):
+    @property
+    def images(self):
+        return self._get_from_my_uri('AlbumImages')
+
+
+class AlbumImage(BaseObject):
+    @property
+    def byte_count(self):
+        return self._get_required('ArchivedSize')
 
 
 def get_auth_user():

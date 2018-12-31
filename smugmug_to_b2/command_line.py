@@ -59,12 +59,44 @@ def set_pin_command(config, args):
     print('PIN successfully stored.')
 
 
+
+def walk_nodes(root, depth=0):
+    """
+    Walks all images in the account, returning (image_count, total_bytes)
+    """
+    name = root.name or 'NO_NAME'
+    prefix = '    ' * depth
+    has_children = root.has_children
+    has_album = root.has_album
+    assert not (has_children and has_album)
+    image_count = 0
+    total_bytes = 0
+    if has_children:
+        print('%s%s' % (prefix, name,))
+        for child in root.children:
+            c, b = walk_nodes(child, depth + 1)
+            image_count += c
+            total_bytes += b
+    if has_album:
+        images = root.album.images
+        image_count = len(images)
+        total_bytes = sum(i.byte_count for i in images)
+        print('%s%30s%5d   %8dMB' % (
+            prefix,
+            name,
+            image_count,
+            (total_bytes + 500000) // 1000000
+        ))
+    return image_count, total_bytes
+
+
 def stats_command(config, args):
     user = get_auth_user()
     node = user.node
-    children = node.children
-    for child in children:
-        print(child)
+    image_count, total_bytes = walk_nodes(node)
+    print()
+    print('number of images:', image_count)
+    print('total MB:', total_bytes // 10000000)
 
 
 def main():
