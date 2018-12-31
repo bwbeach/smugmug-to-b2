@@ -4,7 +4,6 @@
 
 import json
 import os
-import requests
 import requests_oauthlib
 import urllib
 

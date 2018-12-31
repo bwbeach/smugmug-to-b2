@@ -70,3 +70,19 @@ def all_smugmug_images(node, is_root=True, parent_prefix=''):
         images.sort(key=(lambda i: i.b2_path))
         for image in images:
             yield image
+
+class B2Image:
+    def __init__(self, b2_path):
+        self.b2_path = b2_path
+
+    def __repr__(self):
+        return self.b2_path
+
+    def __str__(self):
+        return self.b2_path
+
+
+def all_b2_images(b2_bucket):
+    for file_version_info, _ in b2_bucket.ls('', recursive=True):
+        yield B2Image(file_version_info.file_name)
+

@@ -8,9 +8,13 @@ import os
 import sys
 import yaml
 
-from .backup import all_smugmug_images
+from .backup import all_b2_images, all_smugmug_images
 from .exception import AppError, ConfigReadError
 from .smugmug import get_auth_url, set_pin, get_auth_user
+
+from b2.account_info.in_memory import InMemoryAccountInfo
+from b2.api import B2Api
+from b2.cache import InMemoryCache
 
 
 def pj(x):
@@ -91,11 +95,23 @@ def walk_nodes(root, depth=0):
     return image_count, total_bytes
 
 
-def stats_command(config, args):
+def list_smug_mug(config, args):
     user = get_auth_user()
     for i in all_smugmug_images(user.node):
         print(i)
 
+
+def get_bucket(config):
+    b2_config = config['b2']
+    account_info = InMemoryAccountInfo()
+    b2_api = B2Api(account_info=account_info, cache=InMemoryCache())
+    b2_api.authorize_account('production', b2_config['key'], b2_config['secret'])
+    return b2_api.get_bucket_by_name(b2_config['bucket'])
+
+def list_b2(config, args):
+    bucket = get_bucket(config)
+    for i in all_b2_images(bucket):
+        print(i)
 
 def main():
     try:
@@ -117,8 +133,11 @@ def main():
     set_pin_subparser.add_argument('pin')
     set_pin_subparser.set_defaults(func=set_pin_command)
 
-    stats_subparser = subparsers.add_parser('stats')
-    stats_subparser.set_defaults(func=stats_command)
+    list_b2_subparser = subparsers.add_parser('list-b2')
+    list_b2_subparser.set_defaults(func=list_b2)
+
+    list_smug_mug_subparser = subparsers.add_parser('list-smug-mug')
+    list_smug_mug_subparser.set_defaults(func=list_smug_mug)
 
     args = parser.parse_args()
     args.func(config['config'], args)
