@@ -85,9 +85,11 @@ def list_b2(config, args):
 
 
 def backup_command(config, args):
+    # The 'ls' method on B2 buckets requires that the prefix end with '/'
+    assert args.prefix == '' or args.prefix.endswith('/'), 'prefix must end with "/"'
     node = get_auth_user().node
     bucket = get_bucket(config)
-    backup(node, bucket)
+    backup(node, bucket, args.prefix)
 
 
 def main():
@@ -117,6 +119,7 @@ def main():
     list_smug_mug_subparser.set_defaults(func=list_smug_mug)
 
     backup_subparser = subparsers.add_parser('backup')
+    backup_subparser.add_argument('--prefix', default='')
     backup_subparser.set_defaults(func=backup_command)
 
     args = parser.parse_args()

@@ -163,6 +163,8 @@ class BaseObject:
             return Album(session, object_data)
         elif object_type == 'AlbumImage':
             return AlbumImage(session, object_data)
+        elif object_type == 'LargestVideo':
+            return LargestVideo(session, object_data)
         elif object_type == 'Node':
             return Node(session, object_data)
         elif object_type == 'User':
@@ -212,22 +214,36 @@ class Album(BaseObject):
         return self._get_from_my_uri('AlbumImages')
 
 
+def bytes_from_url(session, url, expected_byte_count=None, expected_md5=None):
+    response = session.get(url)
+    if response.status_code != 200:
+        raise HttpError('status = %d %s' % (response.status_code, response.text,))
+    response.raw.decode_content = True  # force undo transport encoding (like gzip)
+    bytes = response.content
+    md5_hash = hashlib.md5(bytes).hexdigest()
+    if expected_byte_count is not None:
+        assert len(bytes) == expected_byte_count
+    if expected_md5 is not None:
+        assert md5_hash == expected_md5
+    return bytes
+
+
 class AlbumImage(BaseObject):
 
     @property
-    def archived_bytes(self):
-        response = self.session.get(self.archived_uri)
-        if response.status_code != 200:
-            raise HttpError('status = %d %s' % (response.status_code, response.text,))
-        response.raw.decode_content = True  # force undo transport encoding (like gzip)
-        bytes = response.content
-        md5_hash = hashlib.md5(bytes).hexdigest()
-        if md5_hash != self.archived_md5:
-            print(md5_hash)
+    def content(self):
+        try:
+            format = self.data['Format']
+            if format == 'JPG':
+                return bytes_from_url(self.session, self.archived_uri, self.byte_count, self.archived_md5)
+            elif format == 'MP4':
+                largest_video = self.largest_video
+                return largest_video.content
+            else:
+                raise Exception('unknown format: ' + format)
+        except:
             pj(self.data)
-        assert len(bytes) == self.byte_count
-        assert md5_hash == self.archived_md5
-        return bytes
+            raise
 
     @property
     def archived_md5(self):
@@ -254,12 +270,39 @@ class AlbumImage(BaseObject):
         return self._get_required('FileName')
 
     @property
+    def largest_video(self):
+        return self._get_from_my_uri('LargestVideo')
+
+    @property
     def keywords(self):
         return self._get_required('Keywords')
 
     @property
     def title(self):
         return self._get_required('Title')
+
+
+class LargestVideo(BaseObject):
+    """
+    Gets the contents of a LargestVideo contained in an AlbumImage.
+
+    https://dgrin.com/discussion/261504/api-v2-0-no-method-to-download-original-images-videos
+    """
+    @property
+    def content(self):
+        return bytes_from_url(self.session, self.url, self.size, self.md5)
+
+    @property
+    def url(self):
+        return self._get_required('Url')
+
+    @property
+    def size(self):
+        return self._get_required('Size')
+
+    @property
+    def md5(self):
+        return self._get_required('MD5')
 
 
 def get_auth_user():

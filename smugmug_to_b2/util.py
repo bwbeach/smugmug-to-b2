@@ -80,6 +80,9 @@ def ordered_zip(iterable_a, iterable_b, key=None):
         else:
             key_a = key(a.current)
             key_b = key(b.current)
+            print()
+            print('A: ' + key_a)
+            print('B: ' + key_b)
             if key_a < key_b:
                 yield a.current, None
                 a.advance()

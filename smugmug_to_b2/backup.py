@@ -37,11 +37,11 @@ class SmugMugImage:
         return repr(self)
 
     @property
-    def archived_bytes(self):
-        return self.image.archived_bytes
+    def content(self):
+        return self.image.content
 
 
-def all_smugmug_images(node, is_root=True, parent_prefix=''):
+def all_smugmug_images(node, prefix, is_root=True, parent_prefix=''):
     """
     Yields all of the SmugMugImages stored in SmugMug
     :param node:
@@ -61,22 +61,25 @@ def all_smugmug_images(node, is_root=True, parent_prefix=''):
     has_album = node.has_album
     assert not (has_children and has_album)
 
-    # Yield all of the images in all children
-    if has_children:
-        children = sorted(node.children, key=(lambda c: c.name + '/'))
-        for child in children:
-            for image in all_smugmug_images(child, False, my_prefix):
-                yield image
+    # Only look at these images/folders if the prefix matches
+    if prefix.startswith(my_prefix) or my_prefix.startswith(prefix):
 
-    # Yield all of the images in an album:
-    if has_album:
-        images = [
-            SmugMugImage(my_prefix, image)
-            for image in node.album.images
-        ]
-        images.sort(key=(lambda i: i.b2_path))
-        for image in images:
-            yield image
+        # Yield all of the images in all children
+        if has_children:
+            children = sorted(node.children, key=(lambda c: c.name + '/'))
+            for child in children:
+                for image in all_smugmug_images(child, prefix, False, my_prefix):
+                    yield image
+
+        # Yield all of the images in an album:
+        if has_album:
+            images = [
+                SmugMugImage(my_prefix, image)
+                for image in node.album.images
+            ]
+            images.sort(key=(lambda i: i.b2_path))
+            for image in images:
+                yield image
 
 class B2Image:
     def __init__(self, b2_path):
@@ -89,19 +92,19 @@ class B2Image:
         return repr(self)
 
 
-def all_b2_images(b2_bucket):
-    for file_version_info, _ in b2_bucket.ls('', recursive=True):
+def all_b2_images(b2_bucket, prefix):
+    for file_version_info, _ in b2_bucket.ls(prefix, recursive=True):
         yield B2Image(file_version_info.file_name)
 
 
-def backup(top_node, bucket):
-    for a, b in ordered_zip(all_smugmug_images(top_node), all_b2_images(bucket), key=lambda x: x.b2_path):
+def backup(top_node, bucket, prefix):
+    for a, b in ordered_zip(all_smugmug_images(top_node, prefix), all_b2_images(bucket, prefix), key=lambda x: x.b2_path):
         if a is None:
             print('HIDE    ', b.b2_path)
             bucket.hide_file(b.b2_path)
         if b is None:
             print('DOWNLOAD', a.b2_path)
-            image_bytes = a.archived_bytes
+            image_bytes = a.content
             print('UPLOAD  ', a.b2_path)
             file_infos = dict(
                 caption=a.caption,
