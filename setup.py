@@ -14,7 +14,9 @@ setup(
     install_requires=[
         'b2',
         'PyYAML',
+        'rauth',
         'requests',
+        'requests_oauthlib'
     ],
     entry_points = {
         'console_scripts': [
