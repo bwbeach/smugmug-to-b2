@@ -103,7 +103,8 @@ def main():
     parser = argparse.ArgumentParser(
         description='Tool to back up photos from SmugMug to B2',
     )
-    subparsers = parser.add_subparsers(title='sub-commands', help='sub-command help')
+    subparsers = parser.add_subparsers(title='sub-commands', help='sub-command help', dest='command_name')
+    subparsers.required = True
 
     authorize_subparser = subparsers.add_parser('authorize')
     authorize_subparser.set_defaults(func=authorize_command)

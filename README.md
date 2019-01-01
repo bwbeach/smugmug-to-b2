@@ -63,5 +63,4 @@ smugmug-to-b2 backup
 
 ## To-Do List
 
-* Fix help message when no args are given.
 * Stop using `rauth`.  It was buggy for API access.  Might as well stop using it for the authorize step.
