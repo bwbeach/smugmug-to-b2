@@ -35,7 +35,7 @@ def get_config():
     except Exception as e:
         raise ConfigReadError('ERROR reading ' + config_path + ': ' + e)
     try:
-        config = yaml.load(config_text)
+        config = yaml.safe_load(config_text)
     except Exception as e:
         raise ConfigReadError('ERROR reading yaml from ' + config_path + ': ' + e)
     return config
