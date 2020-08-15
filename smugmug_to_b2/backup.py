@@ -23,7 +23,7 @@ class SmugMugImage:
         self.archived_url = image.archived_uri
         self.caption = image.caption
         self.date = image.date
-        self.file_name= image.file_name
+        self.file_name = image.file_name
         self.keywords = image.keywords
         self.title = image.title
         parts = self.file_name.split('.')
@@ -45,6 +45,7 @@ def all_smugmug_images(node, prefix, is_root=True, parent_prefix=''):
     """
     Yields all of the SmugMugImages stored in SmugMug
     :param node:
+    :param prefix:
     :param is_root:
     :param parent_prefix:
     :return:
@@ -81,6 +82,7 @@ def all_smugmug_images(node, prefix, is_root=True, parent_prefix=''):
             for image in images:
                 yield image
 
+
 class B2Image:
     def __init__(self, b2_path):
         self.b2_path = b2_path
@@ -98,7 +100,12 @@ def all_b2_images(b2_bucket, prefix):
 
 
 def backup(top_node, bucket, prefix):
-    for a, b in ordered_zip(all_smugmug_images(top_node, prefix), all_b2_images(bucket, prefix), key=lambda x: x.b2_path):
+    smugmug_b2_pairs = ordered_zip(
+        all_smugmug_images(top_node, prefix),
+        all_b2_images(bucket, prefix),
+        key=lambda x: x.b2_path
+    )
+    for a, b in smugmug_b2_pairs:
         if a is None:
             print('HIDE    ', b.b2_path)
             bucket.hide_file(b.b2_path)

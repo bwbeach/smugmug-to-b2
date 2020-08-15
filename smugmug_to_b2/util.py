@@ -4,6 +4,7 @@
 
 import unittest
 
+
 class Reader:
     """
     Holds the current value from an iterable in '.current'.
@@ -38,7 +39,7 @@ class Reader:
 
 class TestReader(unittest.TestCase):
     def test_normal(self):
-        reader = Reader([1, 2, 3])
+        reader = Reader([1, 2, 3], lambda n: n)
         self.assertEqual(1, reader.current)
         self.assertEqual(1, reader.current)
         reader.advance()
@@ -49,7 +50,7 @@ class TestReader(unittest.TestCase):
         self.assertIsNone(reader.current)
 
     def test_out_of_order(self):
-        reader = Reader([2, 1])
+        reader = Reader([2, 1], lambda n: n)
         with self.assertRaises(AssertionError):
             reader.advance()
 

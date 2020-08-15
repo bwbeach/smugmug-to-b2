@@ -8,10 +8,10 @@ import os
 import requests_oauthlib
 import urllib
 
-from rauth import OAuth1Service, OAuth1Session
+from rauth import OAuth1Service
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
-from .exception import AppError, CredentialsError, HttpError
+from .exception import AppError, HttpError
 
 # From https://api.smugmug.com/api/v2/doc/tutorial/oauth/non-web.html:
 OAUTH_ORIGIN = 'https://secure.smugmug.com'
@@ -158,7 +158,7 @@ class BaseObject:
         return self.data['Uri']
 
     @classmethod
-    def make_object(self, session, object_type, object_data):
+    def make_object(cls, session, object_type, object_data):
         if object_type == 'Album':
             return Album(session, object_data)
         elif object_type == 'AlbumImage':
@@ -219,13 +219,13 @@ def bytes_from_url(session, url, expected_byte_count=None, expected_md5=None):
     if response.status_code != 200:
         raise HttpError('status = %d %s' % (response.status_code, response.text,))
     response.raw.decode_content = True  # force undo transport encoding (like gzip)
-    bytes = response.content
-    md5_hash = hashlib.md5(bytes).hexdigest()
+    content_bytes = response.content
+    md5_hash = hashlib.md5(content_bytes).hexdigest()
     if expected_byte_count is not None:
-        assert len(bytes) == expected_byte_count
+        assert len(content_bytes) == expected_byte_count
     if expected_md5 is not None:
         assert md5_hash == expected_md5
-    return bytes
+    return content_bytes
 
 
 class AlbumImage(BaseObject):
@@ -233,15 +233,15 @@ class AlbumImage(BaseObject):
     @property
     def content(self):
         try:
-            format = self.data['Format']
-            if format == 'JPG':
+            fmt = self.data['Format']
+            if fmt == 'JPG':
                 return bytes_from_url(self.session, self.archived_uri, self.byte_count, self.archived_md5)
-            elif format == 'MP4':
+            elif fmt == 'MP4':
                 largest_video = self.largest_video
                 return largest_video.content
             else:
-                raise Exception('unknown format: ' + format)
-        except:
+                raise Exception('unknown format: ' + fmt)
+        except Exception:
             pj(self.data)
             raise
 
@@ -311,5 +311,10 @@ def get_auth_user():
     secret = info['secret']
     access_token = info['access_token']
     access_token_secret = info['access_token_secret']
-    session = requests_oauthlib.OAuth1Session(client_key=key, client_secret=secret, resource_owner_key=access_token, resource_owner_secret=access_token_secret)
+    session = requests_oauthlib.OAuth1Session(
+        client_key=key,
+        client_secret=secret,
+        resource_owner_key=access_token,
+        resource_owner_secret=access_token_secret
+    )
     return BaseObject.make_object(session, 'User', _get_json(session, '/api/v2!authuser')['User'])

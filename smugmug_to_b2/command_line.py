@@ -33,14 +33,15 @@ def get_config():
         with open(config_path, 'r') as f:
             config_text = f.read()
     except Exception as e:
-        raise ConfigReadError('ERROR reading ' + config_path + ': ' + e)
+        raise ConfigReadError('ERROR reading ' + config_path + ': ' + str(e))
     try:
         config = yaml.safe_load(config_text)
     except Exception as e:
-        raise ConfigReadError('ERROR reading yaml from ' + config_path + ': ' + e)
+        raise ConfigReadError('ERROR reading yaml from ' + config_path + ': ' + str(e))
     return config
 
 
+# noinspection PyUnusedLocal
 def authorize_command(config, args):
     print(config)
     smug_mug_config = config['smugmug']
@@ -62,10 +63,10 @@ def set_pin_command(config, args):
     print('PIN successfully stored.')
 
 
-
+# noinspection PyUnusedLocal
 def list_smug_mug(config, args):
     user = get_auth_user()
-    for i in all_smugmug_images(user.node):
+    for i in all_smugmug_images(user.node, ''):
         print(i)
 
 
@@ -76,9 +77,11 @@ def get_bucket(config):
     b2_api.authorize_account('production', b2_config['key'], b2_config['secret'])
     return b2_api.get_bucket_by_name(b2_config['bucket'])
 
+
+# noinspection PyUnusedLocal
 def list_b2(config, args):
     bucket = get_bucket(config)
-    for i in all_b2_images(bucket):
+    for i in all_b2_images(bucket, ''):
         print(i)
 
 
@@ -123,4 +126,3 @@ def main():
 
     args = parser.parse_args()
     args.func(config['config'], args)
-
