@@ -12,7 +12,7 @@ setup(
     packages=['smugmug_to_b2'],
     include_package_data=False,
     install_requires=[
-        'b2',
+        'b2sdk',
         'PyYAML',
         'rauth',
         'requests',
