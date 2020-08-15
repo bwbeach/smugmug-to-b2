@@ -12,9 +12,7 @@ from .backup import all_b2_images, all_smugmug_images, backup
 from .exception import AppError, ConfigReadError
 from .smugmug import get_auth_url, set_pin, get_auth_user
 
-from b2.account_info.in_memory import InMemoryAccountInfo
-from b2.api import B2Api
-from b2.cache import InMemoryCache
+from b2sdk.v1 import B2Api, InMemoryAccountInfo
 
 
 def pj(x):
@@ -74,7 +72,7 @@ def list_smug_mug(config, args):
 def get_bucket(config):
     b2_config = config['b2']
     account_info = InMemoryAccountInfo()
-    b2_api = B2Api(account_info=account_info, cache=InMemoryCache())
+    b2_api = B2Api(account_info=account_info)
     b2_api.authorize_account('production', b2_config['key'], b2_config['secret'])
     return b2_api.get_bucket_by_name(b2_config['bucket'])
 
