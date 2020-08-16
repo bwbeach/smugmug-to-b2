@@ -2,28 +2,43 @@
 # File: util
 #
 
-class Reader:
+from typing import Callable, Generic, Iterable, Iterator, Union, TypeVar
+
+
+K = TypeVar('K')
+T = TypeVar('T')
+
+
+class Reader(Generic[T, K]):
     """
     Holds the current value from an iterable in '.current'.
     None indicates no more values.
 
     advance() moves to the next value.
     """
-    def __init__(self, iterable, key):
-        self._iterator = iter(iterable)
-        self.current = self._next()
-        self.key = key
+    _iterator: Iterator[T]
+    _current: Union[T, None]
+    _key: Callable[[T], K]
 
-    def advance(self):
+    def __init__(self, iterable: Iterable[T], key: Callable[[T], K]):
+        self._iterator = iter(iterable)
+        self._current = self._next()
+        self._key = key
+
+    @property
+    def current(self) -> T:
+        return self._current
+
+    def advance(self) -> None:
         """
         Moves to the next value.  Should only be called if there is a current value.
         """
-        assert self.current is not None
+        assert self._current is not None
         new_current = self._next()
-        assert new_current is None or self.key(self.current) < self.key(new_current), (self.current, new_current)
-        self.current = new_current
+        assert new_current is None or self._key(self._current) < self._key(new_current), (self._current, new_current)
+        self._current = new_current
 
-    def _next(self):
+    def _next(self) -> Union[T, None]:
         """
         Returns the next value from the iterator, or None if there
         are no more values.

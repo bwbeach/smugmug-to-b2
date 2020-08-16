@@ -18,6 +18,9 @@ setup(
         'requests',
         'requests_oauthlib'
     ],
+    tests_require=[
+        'pytest'
+    ],
     entry_points = {
         'console_scripts': [
             'smugmug-to-b2=smugmug_to_b2.command_line:main',

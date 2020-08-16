@@ -1,9 +1,18 @@
+import pytest
 
 from smugmug_to_b2.util import Reader, ordered_zip
+from typing import TypeVar
+
+
+T = TypeVar('T')
+
+
+def identity(x: T) -> T:
+    return x
 
 
 def test_reader_normal():
-    reader = Reader([1, 2, 3], lambda n: n)
+    reader = Reader([1, 2, 3], identity)
     assert 1 == reader.current
     reader.advance()
     assert 2 == reader.current
@@ -12,10 +21,11 @@ def test_reader_normal():
     reader.advance()
     assert None is reader.current
 
-# def test_reader_out_of_order():
-#     reader = Reader([2, 1], lambda n: n)
-#     with self.assertRaises(AssertionError):
-#         reader.advance()
+
+def test_reader_out_of_order():
+    reader = Reader([2, 1], identity)
+    with pytest.raises(AssertionError):
+        reader.advance()
 
 
 def test_ordered_zip_empty():
