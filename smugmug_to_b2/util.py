@@ -2,9 +2,6 @@
 # File: util
 #
 
-import unittest
-
-
 class Reader:
     """
     Holds the current value from an iterable in '.current'.
@@ -35,24 +32,6 @@ class Reader:
             return next(self._iterator)
         except StopIteration:
             return None
-
-
-class TestReader(unittest.TestCase):
-    def test_normal(self):
-        reader = Reader([1, 2, 3], lambda n: n)
-        self.assertEqual(1, reader.current)
-        self.assertEqual(1, reader.current)
-        reader.advance()
-        self.assertEqual(2, reader.current)
-        reader.advance()
-        self.assertEqual(3, reader.current)
-        reader.advance()
-        self.assertIsNone(reader.current)
-
-    def test_out_of_order(self):
-        reader = Reader([2, 1], lambda n: n)
-        with self.assertRaises(AssertionError):
-            reader.advance()
 
 
 def ordered_zip(iterable_a, iterable_b, key=None):
@@ -94,26 +73,3 @@ def ordered_zip(iterable_a, iterable_b, key=None):
             else:
                 yield None, b.current
                 b.advance()
-
-
-class TestOrderedZip(unittest.TestCase):
-    def test_empty(self):
-        self.assertEqual([], list(ordered_zip([], [])))
-
-    def test_only_left(self):
-        self.assertEqual([(1, None), (2, None)], list(ordered_zip([1, 2], [])))
-
-    def test_only_right(self):
-        self.assertEqual([(None, 1), (None, 2)], list(ordered_zip([], [1, 2])))
-
-    def test_some_match(self):
-        self.assertEqual(
-            [(1, None), (None, 2), (3, 3), (4, None), (None, 5), (6, 6)],
-            list(ordered_zip([1, 3, 4, 6], [2, 3, 5, 6]))
-        )
-
-    def test_key(self):
-        self.assertEqual(
-            [(0, 1), (2, 2), (5, 4)],
-            list(ordered_zip([0, 2, 5], [1, 2, 4], lambda n: n // 2))
-        )
