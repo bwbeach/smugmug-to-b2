@@ -8,7 +8,9 @@ import os
 import requests_oauthlib
 import urllib
 
+from pathlib import Path
 from rauth import OAuth1Service
+from typing import Dict
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 from .exception import AppError, HttpError
@@ -21,22 +23,21 @@ AUTHORIZE_URL = OAUTH_ORIGIN + '/services/oauth/1.0a/authorize'
 API_ORIGIN = 'https://api.smugmug.com'
 
 # PIN path
-PIN_PATH = os.path.join(os.getenv('HOME'), '.smugmug-to-b2-access-token')
+PIN_PATH = Path(os.getenv('HOME'), '.smugmug-to-b2-access-token')
 
 
 def pj(x):
     print(json.dumps(x, indent=4, sort_keys=True))
 
 
-def _read_json(path):
-    with open(path, 'r') as f:
-        return json.loads(f.read())
+def _read_json_dict(path: Path) -> Dict:
+    with path.open('r') as f:
+        return json.load(f)
 
 
-def _write_json(path, data):
-    with open(path, 'w') as f:
-        f.write(json.dumps(data, indent=4, sort_keys=True))
-        f.write('\n')
+def _write_json_dict(path: Path, data: Dict) -> None:
+    with path.open('w') as f:
+        json.dump(data, f, indent=4, sort_keys=True)
 
 
 def _add_auth_params(auth_url, access=None, permissions=None):
@@ -84,7 +85,7 @@ def get_auth_url(key, secret):
     rt, rts = service.get_request_token(params={'oauth_callback': 'oob'})
 
     # Save the request token, because we'll need it after getting the PIN.
-    _write_json(PIN_PATH, dict(key=key, secret=secret, request_token=rt, request_token_secret=rts))
+    _write_json_dict(PIN_PATH, dict(key=key, secret=secret, request_token=rt, request_token_secret=rts))
 
     # Second, we need to give the user the web URL where they can authorize our
     # application.
@@ -96,12 +97,12 @@ def set_pin(key, secret, pin):
     Uses the PIN from visiting the auth page to create key/secret.
     """
     # Get the request token and secret that was saved before.
-    info = _read_json(PIN_PATH)
+    info = _read_json_dict(PIN_PATH)
     rt = info['request_token']
     rts = info['request_token_secret']
     service = _make_service(key, secret)
     at, ats = service.get_access_token(rt, rts, params={'oauth_verifier': pin})
-    _write_json(PIN_PATH, dict(key=key, secret=secret, access_token=at, access_token_secret=ats))
+    _write_json_dict(PIN_PATH, dict(key=key, secret=secret, access_token=at, access_token_secret=ats))
 
 
 def _get_json(session, path):
@@ -306,7 +307,7 @@ class LargestVideo(BaseObject):
 
 
 def get_auth_user():
-    info = _read_json(PIN_PATH)
+    info = _read_json_dict(PIN_PATH)
     key = info['key']
     secret = info['secret']
     access_token = info['access_token']
