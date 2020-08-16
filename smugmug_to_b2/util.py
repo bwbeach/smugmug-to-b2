@@ -2,7 +2,7 @@
 # File: util
 #
 
-from typing import Callable, Generic, Iterable, Iterator, Union, TypeVar
+from typing import Callable, Generator, Generic, Iterable, Iterator, Union, TypeVar
 
 
 K = TypeVar('K')
@@ -49,7 +49,11 @@ class Reader(Generic[T, K]):
             return None
 
 
-def ordered_zip(iterable_a, iterable_b, key=None):
+def ordered_zip(
+        iterable_a: Iterable[T],
+        iterable_b: Iterable[T],
+        key: Callable[[T], K] = None
+) -> Generator[T, None, None]:
     """
     Zips two iterables, matching keys.
 
@@ -59,11 +63,11 @@ def ordered_zip(iterable_a, iterable_b, key=None):
     """
 
     # Default is that the items themselves are the keys
-    key = key or (lambda x: x)
+    key: K = key or (lambda x: x)
 
     # Make a reader for each of the inputs to hold the current value.
-    a = Reader(iterable_a, key)
-    b = Reader(iterable_b, key)
+    a: Reader[T, K] = Reader(iterable_a, key)
+    b: Reader[T, K] = Reader(iterable_b, key)
 
     while a.current is not None or b.current is not None:
         if a.current is None:
@@ -73,8 +77,8 @@ def ordered_zip(iterable_a, iterable_b, key=None):
             yield a.current, None
             a.advance()
         else:
-            key_a = key(a.current)
-            key_b = key(b.current)
+            key_a: K = key(a.current)
+            key_b: K = key(b.current)
             # print()
             # print('A: ' + key_a)
             # print('B: ' + key_b)
