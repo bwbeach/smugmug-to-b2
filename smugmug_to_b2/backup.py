@@ -50,6 +50,7 @@ def all_smugmug_images(node, prefix, is_root=True, parent_prefix=''):
     :param parent_prefix:
     :return:
     """
+    print(f'Checking smugmug: {node}')
     # Build the file name prefix to use for children
     if is_root:
         my_prefix = ''
@@ -84,8 +85,25 @@ def all_smugmug_images(node, prefix, is_root=True, parent_prefix=''):
 
 
 class B2Image:
-    def __init__(self, b2_path):
+    def __init__(self, b2_path, file_info):
         self.b2_path = b2_path
+        self.file_info = file_info
+
+    @property
+    def file_name(self):
+        return self.file_info['file_name']
+
+    @property
+    def caption(self):
+        return self.file_info['caption']
+
+    @property
+    def keywords(self):
+        return self.file_info['keywords']
+
+    @property
+    def title(self):
+        return self.file_info['title']
 
     def __repr__(self):
         return 'B2:' + self.b2_path
@@ -96,7 +114,35 @@ class B2Image:
 
 def all_b2_images(b2_bucket, prefix):
     for file_version_info, _ in b2_bucket.ls(prefix, recursive=True):
-        yield B2Image(file_version_info.file_name)
+        yield B2Image(file_version_info.file_name, file_version_info.file_info)
+
+
+def images_match(a: SmugMugImage, b: B2Image):
+    """Checks whether the meta-data matches on a file whose name matches"""
+    return (
+        a.file_name == b.file_name and
+        a.caption == b.caption and
+        a.keywords == b.keywords and
+        a.title == b.title
+    )
+
+
+def copy_from_smugmug_to_b2(a: SmugMugImage, bucket, upload_type: str) -> None:
+    print('DOWNLOAD', a.b2_path)
+    image_bytes = a.content
+    print(upload_type, a.b2_path)
+    file_infos = dict(
+        caption=a.caption,
+        date=a.date,
+        file_name=a.file_name,
+        keywords=a.keywords,
+        title=a.title
+    )
+    bucket.upload_bytes(
+        data_bytes=image_bytes,
+        file_name=a.b2_path,
+        file_infos=file_infos
+    )
 
 
 def backup(top_node, bucket, prefix):
@@ -109,19 +155,9 @@ def backup(top_node, bucket, prefix):
         if a is None:
             print('HIDE    ', b.b2_path)
             bucket.hide_file(b.b2_path)
-        if b is None:
-            print('DOWNLOAD', a.b2_path)
-            image_bytes = a.content
-            print('UPLOAD  ', a.b2_path)
-            file_infos = dict(
-                caption=a.caption,
-                date=a.date,
-                file_name=a.file_name,
-                keywords=a.keywords,
-                title=a.title
-            )
-            bucket.upload_bytes(
-                data_bytes=image_bytes,
-                file_name=a.b2_path,
-                file_infos=file_infos
-            )
+        elif b is None:
+            copy_from_smugmug_to_b2(a, bucket, 'UPLOAD  ')
+        else:
+            # We have both.  Re-upload if they do not match.
+            if not images_match(a, b):
+                copy_from_smugmug_to_b2(a, bucket, 'REUPLOAD')

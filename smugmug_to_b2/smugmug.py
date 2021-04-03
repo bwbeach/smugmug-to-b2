@@ -208,6 +208,9 @@ class Node(BaseObject):
     def album(self):
         return self._get_from_my_uri('Album')
 
+    def __str__(self):
+        return f"Node({repr(self.data['Name'])})"
+
 
 class Album(BaseObject):
     @property
